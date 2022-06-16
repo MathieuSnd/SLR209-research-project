@@ -1,0 +1,212 @@
+
+A Highly Available Local Leader Election Service - https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=815321
+Gros papier bien trop dur - https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5161028
+Premier papier - file:///home/mathieu/Gafni_Loopfree.pdf
+
+
+Malpani - http://courses.csail.mit.edu/6.885/spring06/papers/MalpaniWV-dialm00.pdf
+
+résumax
+-> GAFNI (2-3 valeurs): 3 valeurs permettent partial link reversal
+ |-> TORA (5 valeurs): détection si la destination est inategnable
+  |-> Malpani (6 valeurs): application au leader election problem, un changement de topologie à la fois
+   |-> Ingram (7 valeurs): amélioration de Mapalni, fonctionne pour des plus grosses évolutions  de topologie
+
+
+
+2 NIVEAUX
+
+variables
+    heights{[]}
+    peers[]
+    peer_heights[{[]}]
+ 
+    pid
+    peer_pids[]
+
+
+
+
+
+
+update message: (height, partition_id)
+down_route message: ([nodes], content)
+up_route message: (content)
+unreachable message: (partition_id)
+
+une fois que le leader est elu,
+
+leader:
+
+fetch_neighbours_routes:
+    broadcast (get neighbour partitions)
+    wait for all border nodes to send their routes
+
+    on receive route_update(route, partition_id):
+        leader_peer_routes[partition_id] = route
+        broadcast (get neighbour partitions)
+
+
+
+on receive unreachable message:
+    leader_peer_routes[partition_id] = []
+    leader_height = []
+    leader_peer_heights = []
+    fetch_neighbours_routes()
+
+
+
+level2_send_message(content, partition_id):
+    leader_peer_routes[partition_id][0].send(
+        down_route message (
+            leader_peer_routes[partition_id][1:], 
+            up_route message(
+                content
+            )
+        )
+    )
+
+
+
+non-leaders:
+
+on receive unreachable message:
+    send unreachable message to min height
+
+on receive up_route message(content):
+    send up_route message (content) to min height
+
+on receive down_route message(nodes[], content):
+    send down_route message (nodes[1:], content) to nodes[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mapalni
+    La propriété de pouvoir détecter si la destination est inategnable 
+est la clé pour élir un leader de facon wait free si aucune modification
+de la topologie n'est effectuée pendant l'éléction: le noeud qui découvre
+qu'il ne peut pas envoyer contacter le leader devient leader.
+
+
+Partial Reversal Method: 
+Every node i other than the destination keeps a list of its neighboring 
+nodes'j that have reversed the direction of the corresponding links (i, i). 
+At each iteration each node i that has no outgoing link reverses the
+directions of the links (i, j) for all j which do not appear on
+its list, and empties the list. If not such j exists (i.e., the list
+is full), node i reverses to the directions of all incoming links
+and empties the list
+
+
+
+
+
+
+li: leader id
+
+t,oid,r: reference level
+    t:    global ref level (grows on link failures)
+    oid:  originator id of the reference level
+    r:    is it reflected? (0, 1). Use is to detect partitions
+
+d: partial link reversal
+i: node id
+
+
+height = (li,t,oid,r,d,i)
+
+
+
+
+TORA
+
+pi
+--------
+upon becomes a sink:
+    if   peers don't have the same ref level:     // (partial link reversal)
+            ref_level = max(ref_levels of peers)
+            d = min(d of peers with max ref_level)
+
+    elif peers have the same ref level:
+            if r = 0: // unreflected, reflect!
+                    ref_level = ref_level of peers
+                    r = 1
+                    d = 0
+            else: // reflected
+                    if oid of peers == i: // detected a partition!
+                            do something (elect itself)
+                    else:
+                            // start a new ref_level
+                            ref_level = (max t of peers) + 1
+                            r = 0
+                            oid = i
+                            d = 0
+                            
+
+
+
+  
+pi 
+----------
+    IN = {}
+    OUT = {}
+    peers = {}
+    height = (0, id)
+    peer_heights = {}
+    leaderHeight = (0,0,0)
+    id = i
+----------
+upon recieve INIT(PEERS, PEERS_ids)
+    peers = PEERS
+    height = 0
+
+    for (p,pid) in (PEERS, PEERS_ids)
+        if id > pid
+            IN = IN U {p}
+        else
+            OUT = OUT U {p}
+        
+        peer_heights = peer_heights U {(0, 0, pid)}
+
+
+upon recieve HEIGHT_UPDATE(h, pid)
+    peer_heights[pid] = h
+    if h > height and peers[pid] in OUT:
+        OUT = OUT - {peers[pid]}
+    elif h < height and peers[pid] in IN:
+        IN = IN - {peers[pid]}
+    do()
+
+upon do:
+    if OUT == {} // sink
+        height.a = min(peer_heights.a) + 1
+
+        would_change = [p in peer_heights, p.a == height.a]
+
+        height.b = min(peer_heights.b) - 1
+
+
+        send HEIGHT_UPDATE(height, id) to PEERS
+
+        
