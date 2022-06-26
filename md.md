@@ -23,12 +23,12 @@ A class of leader election algorithms is based on height-based routing algorithm
 
 - Full link reversal: At every round, each node other than the destination which became a sink reverses all its links, meaning that all of its ingoing links become outgoing.  
 
-- Partial link reversal: This algorithm works in the same way as the full link reversal one, except that every node i other than the destination keeps a list of its neighboring nodes'j that have reversed the direction of the corresponding links (i, i). At each iteration each node i that has no outgoing link reverses the directions of the links (i, j) for all j which do not appear on its list, and empties the list. If not such j exists (i.e., the list is full), node i reverses to the directions of all incoming links and empties the list.  
+- Partial link reversal: This algorithm works in the same way as the full link reversal one, except that every node i other than the destination keeps a list of its neighboring nodes' j that have reversed the direction of the corresponding links (i, i). At each iteration each node i that has no outgoing link reverses the directions of the links (i, j) for all j which do not appear on its list, and empties the list. If not such j exists (i.e., the list is full), node i reverses to the directions of all incoming links and empties the list.  
 
 
 Gafni and Bertsekas [1] also presented two height-based algorithms which are equivalent to the above algorithms. The main idea is for every node to maintain a height vector composed on one or multiple values. Height values are compared lexicographically. For each node i, the link (i,j) is defined as ingoing if and only if the the height of j is inferior to the height of i. When a node updates its height, it sends an update message to all of its peers, for every node to know the state of its peers.
 
-- Full link reversal: the height is in the form $h_i=(a_i,i)$. Where $i$ is an unique identifier. $a_i$ is initially $0$ for every node. The purpose of putting an unique identifier in the height vector is to break the symetry during the initialization. When a node becomes a sink at the _k_ th iteration, it updates its $a_i$ value:  
+- Full link reversal: the height is in the form $h_i=(a_i,i)$. Where $i$ is an unique identifier. $a_i$ is initially $0$ for every node. The purpose of putting an unique identifier in the height vector is to break the symmetry during the initialization. When a node becomes a sink at the _k_ th iteration, it updates its $a_i$ value:  
 $$a_i^{k+1}=\max_{j \text{ neighbor of } i}{a_j^k} + 1$$
 
 - Partial link reversal: the height is in the form $h_i=(a_i,b_i,i)$. The value $a_i$ follow the same rules as above. $b_i$ is initially set to $0$, and when a node becomes a sink at the _k_ th iteration, it updates its $b_i$ value:  

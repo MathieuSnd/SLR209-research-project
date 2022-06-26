@@ -6,7 +6,6 @@ import pykka
 import numpy as np
 from time import sleep
 from actor import AbstractActor
-import time
 
 
 Height = list[6]
@@ -14,10 +13,10 @@ Height = list[6]
 
 class Actor(AbstractActor):
     peers: dict
-    peer_heights: dict#{int: dict(int, Height)}
-    peer_pids: dict#dict(int,int)
-    heights: dict#dict(int, Height)
+    heights: dict # dict(int, Height)
     pid: int
+    peer_pids: dict # node id -> partition id
+    peer_heights: dict # node id -> {partition id -> Height}
     
     def __str__(self):
         return self.__repr__()
@@ -124,45 +123,16 @@ class Actor(AbstractActor):
         if need_broadcast:
             self.broadcastUpdate()
 
-
-
-
-
              
-    def suicide_message(self, id):
-        del self.peers[id]
-        del self.peer_heights[id]
         
-        if self.is_sink():
-            if self.peers == {}:
-                # leader of its own group
-                id = self.heights[self.pid][-1]
-                self.heights[self.pid] = [id, -1, -1, -1, 0, id]
-            else:
-                print("NEW SINK", self.heights[self.pid])
-                id = self.heights[self.pid][-1]
-                t = time.time()
-                self.heights[self.pid][1:4] = [t, id, 0]
-                
-            self.broadcastUpdate()
-        else:
-            pass
-        
-        
-        
-            
     """
         cause: id of the actor that sended the message 
         that caused the update
         returns wether the height changed or not
     """
     def update_height(self, cause: int) -> bool:
-        
-        
         if not self.is_sink():
             return False
-        
-        print("SINK", self.heights[self.pid], self.peer_heights)
         
         
         rl = self.peer_ref_levels()
@@ -173,9 +143,6 @@ class Actor(AbstractActor):
             # all its neighbors and sets its delta to one less than the
             # minimum delta value among all neighbors with the largest
             # reference level (a partial reversal). 
-            
-            # B
-            
             
             ref_level = max(self.peer_ref_levels())
             
@@ -204,9 +171,6 @@ class Actor(AbstractActor):
                 # all of i's neighbors have the same reflected reference
                 # level with i as the originator, then i has detected a
                 # partition and takes appropriate action. 
-                
-                # D
-                print("NEW LEADER ELECTED")
                 id = self.heights[self.pid][-1]
                 self.heights[self.pid] = [id, -1, -1, -1, 0, id]
             else:
@@ -215,7 +179,6 @@ class Actor(AbstractActor):
                 #new reference level. This situation only happens if a
                 #link fails while the system is recovering from an earlier
                 #link failure. 
-                print("NEW REF LEVEL")
                 assert 0
         return True
 
@@ -387,9 +350,8 @@ def draw_graph(actors, links):
                 if h < a.heights[a.pid]:
                     outgoing.append(h)
             else:
-                #G.add_edge(aid, h[-1], color="blue", weight=1, style="arc3")
-                #G.add_edge(h[-1], aid, color="blue", weight=1, style="arc3")
-                pass
+                G.add_edge(aid, h[-1], color="blue", weight=1, style="arc3")
+                G.add_edge(h[-1], aid, color="blue", weight=1, style="arc3")
                 
         
         
@@ -425,20 +387,6 @@ def draw_graph(actors, links):
     
     pos = nx.kamada_kawai_layout(G)
     
-    pos[10] -= (0.2, 0)
-    pos[9]  += (0.2, 0)
-    pos[5]  -= (0., 0.2)
-    pos[2]  += (0.0, 0.20)
-    
-    #print(pos)
-    #print("--------------------")
-    #import json
-    #print(json.dumps(dict(pos)))
-    pos = {0: [0.27844786, 1.        ], 1: [0.19627453, 0.66793719], 2: [-0.05860071,  0.68538639], 3: [0.04071943, 0.34314727], 4: [ 0.32320108, -0.09336269], 5: [ 0.05115201, -0.0298284 ], 6: [-0.03859091, -0.24996603], 7: [ 0.1140291 , -0.43599882], 8: [-0.21790095, -0.27440887], 9: [-0.38646389, -0.27749718], 10: [-0.04884309, -0.61118807], 11: [-0.25342447, -0.72422077]}
-    #pos = {0: [0.53454672, 1.        ], 1: [0.37707389, 0.72696836], 2: [0.32632065, 0.61691266], 3: [0.18204993, 0.47689881], 4: [ 0.12102834, -0.07088438], 5: [0.01006633, 0.00211136], 6: [-0.13766241, -0.13192478], 7: [-0.29026217, -0.15960719], 8: [-0.08493775, -0.5053705 ], 9: [ 0.08466102, -0.82072351], 10: [-0.75474684, -0.42518584], 11: [-0.36813771, -0.70919498]}
-    
-    #pos = {0: [0.53454672, 1.        ], 1: [0.37707389, 0.72696836]), 2: array([0.32632065, 0.61691266]), 3: array([0.18204993, 0.47689881]), 4: array([ 0.12102834, -0.07088438]), 5: array([0.01006633, 0.00211136]), 6: array([-0.13766241, -0.13192478]), 7: array([-0.29026217, -0.15960719]), 8: array([-0.08493775, -0.5053705 ]), 9: array([ 0.08466102, -0.82072351]), 10: array([-0.75474684, -0.42518584]), 11: array([-0.36813771, -0.70919498])}
-
     nx.draw(G,
             pos=pos,
             connectionstyle='arc3, rad=0.',
