@@ -14,7 +14,7 @@ Height = list[6]
 
 class Actor(AbstractActor):
     peers: dict
-    peer_heights: dict#{int: dict(int, list[6])}
+    peer_heights: dict#{int: dict(int, Height)}
     peer_pids: dict#dict(int,int)
     heights: dict#dict(int, Height)
     pid: int
@@ -75,13 +75,9 @@ class Actor(AbstractActor):
         self.peer_heights[id] = heights
         self.peer_pids[id] = pid
         
-        #print("update", self.heights, heights)
-        
         need_broadcast = False
         
         if pid != self.pid:
-            # we know someone from another partition,
-            # they might know about other partitions
             updated = False
             for p in heights.keys():
                 h = heights[p]
@@ -101,8 +97,7 @@ class Actor(AbstractActor):
                 
             if updated:
                 self.broadcastUpdate()
-            return
-        
+            return        
         else:
             # pj knows some partitions, let us learn how to contact them
             for p in heights.keys():
@@ -114,33 +109,25 @@ class Actor(AbstractActor):
         if heights[pid][0] != self.heights[pid][0]:
             # When node i receives an Update message 
             # from neighboring node j such that lidj != lidi: 
-            
-        
             # if lidi > lidj or (oidi = lidj and ri = 1)
             if (self.heights[pid][0] > heights[pid][0] or 
                (self.heights[pid][2] == heights[pid][2] and self.heights[pid][2] == 1)):
                 self.heights[pid] = [heights[pid][0], 0, 0, 0, heights[pid][4]+1, self.heights[pid][-1]]
-                print(f"adopt {self.heights[pid][-1]} -> {heights[pid][-1]}")
-                
-                assert not self.is_sink()
-                
                 need_broadcast = True
-                
-                
             if not sink:
-                print("becomes sink", self.heights[self.pid])
-                
-                
                 h = self.heights[pid]  
-                        
                 if self.update_height(heights[pid][-1]):
-                    print("updated height", self.heights[pid])
                     need_broadcast = True
                 else:
                     assert h == self.heights[self.pid]
         
         if need_broadcast:
             self.broadcastUpdate()
+
+
+
+
+
              
     def suicide_message(self, id):
         del self.peers[id]
@@ -256,22 +243,23 @@ def init_actors(N, p, P, k):
     
     links = {i: [] for i in range(N * k)}
     
-    np.random.seed(0)
+    np.random.seed(5)
     
     
     # partitions
-    for j in range(k):    
-        for i in range(N):
-            begin = N * j
-            others = [l for l in range(begin, begin + N)]
-            others.remove(begin + i)
-            
-            
-            added_links = list(np.random.choice(others, p, replace=False))
-            
-            links[begin + i] += added_links
-            for o in added_links:
-                links[o].append(begin + i)
+    if N > 1:
+        for j in range(k):    
+            for i in range(N):
+                begin = N * j
+                others = [l for l in range(begin, begin + N)]
+                others.remove(begin + i)
+                
+                
+                added_links = list(np.random.choice(others, p, replace=False))
+                
+                links[begin + i] += added_links
+                for o in added_links:
+                    links[o].append(begin + i)
                 
     # links between partitions
     if k > 1:
@@ -296,9 +284,12 @@ def init_actors(N, p, P, k):
 # p: conectivity parameter in a partition
 # P: conectivity parameter between partitions
 # k: number of partitions
-N = 6; p = 2; P = 2; k = 3
+N = 4; p = 1; P = 1; k = 3
 
 actor_refs, links = init_actors(N, p, P, k)
+
+# print variance of the number of links per node
+print("links per node:", np.var([len(links[i]) for i in range(N * k)]))
 
 
 actors = [a.ask({"type": "getself"}) for a in actor_refs.values()]
@@ -341,6 +332,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
+
 def draw_graph(actors, links):
     
     G = nx.DiGraph()
@@ -376,16 +368,18 @@ def draw_graph(actors, links):
         inter_part_links = []
         inter_part_h0 = []
         
+        draw_parti = 0
+        
         
         for i in a.peer_heights.keys():
             pidi = a.peer_pids[i]
             h = a.peer_heights[i][pidi]
             
-            if 0 in a.peer_heights[i]:
-                if pidi == 0:
+            if draw_parti in a.peer_heights[i]:
+                if pidi == draw_parti:
                     inter_part_h0.append(0)
                 else:
-                    inter_part_h0.append(a.peer_heights[i][0])
+                    inter_part_h0.append(a.peer_heights[i][draw_parti])
                 
                 inter_part_links.append(h[-1])
                 
@@ -393,30 +387,29 @@ def draw_graph(actors, links):
                 if h < a.heights[a.pid]:
                     outgoing.append(h)
             else:
-                if aid > h[-1]:
-                    G.add_edge(aid, h[-1], color="blue", weight=2, style="arc3")
+                #G.add_edge(aid, h[-1], color="blue", weight=1, style="arc3")
+                #G.add_edge(h[-1], aid, color="blue", weight=1, style="arc3")
+                pass
                 
         
         
-        if a.pid != 0 and inter_part_links != []:
+        
+        if outgoing != []:
+            min_link = min(outgoing)
+            
+            outgoing.remove(min_link)
+            
+            G.add_edge(aid, min_link[-1], color="red", weight=2, style="arc3")
+
+            for o in outgoing:
+                # grey edge
+                G.add_edge(aid, o[-1], color="grey", weight=1, style="arc3")
+            
+        if a.pid != draw_parti and inter_part_links != []:
+            #continue
             link = inter_part_links[np.argmin(inter_part_h0)]
             print("LINK", aid, link)
-            G.add_edge(aid, link, color="green", weight=2, style="arc3")
-        
-        if outgoing == []:
-            continue
-        
-        
-        
-        min_link = min(outgoing)
-        
-        outgoing.remove(min_link)
-        
-        G.add_edge(aid, min_link[-1], color="red", weight=2, style="arc3")
-
-        for o in outgoing:
-            # grey edge
-            G.add_edge(aid, o[-1], color="grey", weight=1, style="arc3")
+            G.add_edge(aid, link, color="green", weight=3, style="arc3")
             
             
     # pos = nx.kamada_kawai_layout(G)
@@ -431,10 +424,24 @@ def draw_graph(actors, links):
     
     
     pos = nx.kamada_kawai_layout(G)
+    
+    pos[10] -= (0.2, 0)
+    pos[9]  += (0.2, 0)
+    pos[5]  -= (0., 0.2)
+    pos[2]  += (0.0, 0.20)
+    
+    #print(pos)
+    #print("--------------------")
+    #import json
+    #print(json.dumps(dict(pos)))
+    pos = {0: [0.27844786, 1.        ], 1: [0.19627453, 0.66793719], 2: [-0.05860071,  0.68538639], 3: [0.04071943, 0.34314727], 4: [ 0.32320108, -0.09336269], 5: [ 0.05115201, -0.0298284 ], 6: [-0.03859091, -0.24996603], 7: [ 0.1140291 , -0.43599882], 8: [-0.21790095, -0.27440887], 9: [-0.38646389, -0.27749718], 10: [-0.04884309, -0.61118807], 11: [-0.25342447, -0.72422077]}
+    #pos = {0: [0.53454672, 1.        ], 1: [0.37707389, 0.72696836], 2: [0.32632065, 0.61691266], 3: [0.18204993, 0.47689881], 4: [ 0.12102834, -0.07088438], 5: [0.01006633, 0.00211136], 6: [-0.13766241, -0.13192478], 7: [-0.29026217, -0.15960719], 8: [-0.08493775, -0.5053705 ], 9: [ 0.08466102, -0.82072351], 10: [-0.75474684, -0.42518584], 11: [-0.36813771, -0.70919498]}
+    
+    #pos = {0: [0.53454672, 1.        ], 1: [0.37707389, 0.72696836]), 2: array([0.32632065, 0.61691266]), 3: array([0.18204993, 0.47689881]), 4: array([ 0.12102834, -0.07088438]), 5: array([0.01006633, 0.00211136]), 6: array([-0.13766241, -0.13192478]), 7: array([-0.29026217, -0.15960719]), 8: array([-0.08493775, -0.5053705 ]), 9: array([ 0.08466102, -0.82072351]), 10: array([-0.75474684, -0.42518584]), 11: array([-0.36813771, -0.70919498])}
 
     nx.draw(G,
             pos=pos,
-            connectionstyle='arc3, rad=0.1',
+            connectionstyle='arc3, rad=0.',
             edge_color=edge_colors, 
             width=weights, 
             with_labels=True, 
@@ -442,6 +449,8 @@ def draw_graph(actors, links):
             node_color=node_colors, 
             font_color="black"
     )
+    
+    
     
     
 draw_graph(actors, links)

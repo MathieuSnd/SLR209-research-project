@@ -1,3 +1,31 @@
+1. LE Problem introduction
+2. From simple routing algorithm to LE solution in dynamic networks
+    - Gafni routing algorithm
+    - TORA routing algorithm
+    - Malpani's LE algorithm
+    - Ingram's algorithm upgrade
+3. Limits of heigth based algorithms:
+    Waves of update on minor topological changes
+4. Hierarchical approach goals
+    - Reduce updates on topological changes
+    - Decentralize data processing
+5. Implementation
+
+6. Tests
+
+7. Discussion
+    - Cost of partitionning?
+    - Cost of level 2 routing?
+8. Conclusions
+    - is this approach relevent?
+
+
+
+
+
+
+
+
 
 A Highly Available Local Leader Election Service - https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=815321
 Gros papier bien trop dur - https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5161028
