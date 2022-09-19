@@ -90,7 +90,6 @@ class Actor(AbstractActor):
                     continue
                 
                 updated = True
-                print(self.heights[self.pid][-1], "learn about", p)
                 self.heights[p] = h + 1
                     
                 
@@ -230,7 +229,6 @@ def init_actors(N, p, P, k):
             part = [i for i in range(N * pi, N * (pi + 1))]
             
             others = [l for l in range(k * N) if l not in part]
-            print(others, k, N)
             
             for i in range(P):
                 host = np.random.choice(part)
@@ -247,19 +245,15 @@ def init_actors(N, p, P, k):
 # p: conectivity parameter in a partition
 # P: conectivity parameter between partitions
 # k: number of partitions
-N = 4; p = 1; P = 1; k = 3
+N = 4; p = 2; P = 1; k = 3
 
 actor_refs, links = init_actors(N, p, P, k)
-
-# print variance of the number of links per node
-print("links per node:", np.var([len(links[i]) for i in range(N * k)]))
-
 
 actors = [a.ask({"type": "getself"}) for a in actor_refs.values()]
 
 
 
-# send set_id message to all actors
+# send init message to all actors
 for i in range(len(actors)):
     pid = i // N
     
@@ -279,7 +273,7 @@ for a in actor_refs.values():
     })
 
 
-sleep(2)
+sleep(0.5)
 
 
 for a in actor_refs.values():
@@ -350,8 +344,9 @@ def draw_graph(actors, links):
                 if h < a.heights[a.pid]:
                     outgoing.append(h)
             else:
-                G.add_edge(aid, h[-1], color="blue", weight=1, style="arc3")
-                G.add_edge(h[-1], aid, color="blue", weight=1, style="arc3")
+                #G.add_edge(aid, h[-1], color="blue", weight=1)
+                #G.add_edge(h[-1], aid, color="blue", weight=1)
+                pass
                 
         
         
@@ -361,31 +356,31 @@ def draw_graph(actors, links):
             
             outgoing.remove(min_link)
             
-            G.add_edge(aid, min_link[-1], color="red", weight=2, style="arc3")
+            G.add_edge(aid, min_link[-1], color="red", weight=2)
 
             for o in outgoing:
                 # grey edge
-                G.add_edge(aid, o[-1], color="grey", weight=1, style="arc3")
+                G.add_edge(aid, o[-1], color="grey", weight=1)
             
         if a.pid != draw_parti and inter_part_links != []:
-            #continue
+            # continue
             link = inter_part_links[np.argmin(inter_part_h0)]
             print("LINK", aid, link)
-            G.add_edge(aid, link, color="green", weight=3, style="arc3")
+            G.add_edge(aid, link, color="green", weight=3)
             
             
-    # pos = nx.kamada_kawai_layout(G)
-
     edges = G.edges()
     edge_colors = [G[u][v]['color'] for u,v in edges]
     weights = [G[u][v]['weight'] for u,v in edges]
-    connectionstyle = [G[u][v]['style'] for u,v in edges]
     
     node_colors = [G.nodes[i]['color'] for i in G.nodes()]
     
     
     
     pos = nx.kamada_kawai_layout(G)
+    
+    pos[2] += (.1,0)
+    pos = {0: [1.        , 0.25874766], 1: [0.55090884, 0.67573728], 2: [0.35129722, 0.84598789], 3: [0.22663174, 0.45208879], 4: [-0.71845786,  0.58743678], 5: [-0.09372629,  0.19817261], 6: [-0.45045123, -0.02314269], 7: [-0.09212056, -0.17952471], 8: [-0.65401917, -0.3825816 ], 9: [-0.16727417, -0.98247501], 10: [-0.03628298, -0.58051645], 11: [ 0.18349445, -0.86993057]}
     
     nx.draw(G,
             pos=pos,
